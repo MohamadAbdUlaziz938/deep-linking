@@ -1,4 +1,6 @@
+import 'package:deeplink/profile_screen.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_dynamic_links/firebase_dynamic_links.dart';
 import 'package:flutter/material.dart';
 
 import 'firebase_options.dart';
@@ -8,20 +10,33 @@ void main() async {
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
-  runApp(const MyApp());
+  final PendingDynamicLinkData? initialLink =
+      await FirebaseDynamicLinks.instance.getInitialLink();
+
+  runApp(MyApp(
+    initialLink: initialLink,
+  ));
 }
 
 class MyApp extends StatelessWidget {
-  const MyApp({Key? key}) : super(key: key);
+  const MyApp({Key? key, required this.initialLink}) : super(key: key);
+  final PendingDynamicLinkData? initialLink;
 
   @override
   Widget build(BuildContext context) {
+    print('---- init link ---- ');
+    print(initialLink?.link.path);
     return MaterialApp(
       title: 'Deep linking',
+      routes: {
+        '/start': (BuildContext context) =>
+            const MyHomePage(title: 'Deep linking'),
+        '/profile': (BuildContext context) => const ProfileScreen()
+      },
       theme: ThemeData(
         primarySwatch: Colors.blue,
       ),
-      home: const MyHomePage(title: 'Flutter Demo Home Page'),
+      initialRoute: '/start',
     );
   }
 }
@@ -42,6 +57,12 @@ class _MyHomePageState extends State<MyHomePage> {
     setState(() {
       _counter++;
     });
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    initDynamicLinks();
   }
 
   @override
@@ -71,4 +92,14 @@ class _MyHomePageState extends State<MyHomePage> {
       ),
     );
   }
+}
+
+Future<void> initDynamicLinks() async {
+  print('init deep linking');
+  FirebaseDynamicLinks.instance.onLink.listen((event) {
+    final Uri deepLink = event.link;
+    print('deep link$deepLink');
+  }).onError((e) {
+    print(e);
+  });
 }
